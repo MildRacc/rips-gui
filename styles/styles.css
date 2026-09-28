@@ -1,0 +1,33 @@
+#config-scroll {
+    box-shadow: 2px 0px 8px 5px alpha(black, 0.5);
+    border-right: 2px solid #121212FF;
+    border-radius: 0 8px 8px 0;
+    min-width: 300px;
+}
+
+#add-conf-btn {
+    min-width: 50px;
+
+}
+
+#add-conf-label {
+    font-size: 1em;
+}
+
+
+.config-widget {
+    border-radius: 4px;
+    border: 2px solid #121212FF;
+    padding: 12px;
+    margin: 2px;
+}
+
+.widget-close {
+    background-color: #00000000;
+    border-radius: 50%;
+
+}
+
+.widget-close:hover {
+    color: #AAAAAA;
+}

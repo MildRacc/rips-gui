@@ -1,0 +1,10 @@
+[package]
+name = "RIPS"
+description = "Rusty Image Pixel Sorter"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gtk4 = { version = "0.11.4", features = ["v4_6"] }
+image = "0.25.10"
+pixel_sorting = { version = "0.1.0", path = "../pixel_sorting" }
