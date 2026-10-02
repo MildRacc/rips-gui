@@ -6,7 +6,7 @@ mod config_widget;
 mod image_edit;
 
 use crate::{config_widget::ConfigWidget, image_edit::{SortingConfig, picture_from_working_image}};
-
+use rips_algorithms as algorithms;
 
 struct App
 {
@@ -167,15 +167,15 @@ impl App
                     image_edit::SortBy::Green => { image_edit::sort(|(_, g, _)| upper / 100.0 >= g && g >= lower / 100.0); },
                     image_edit::SortBy::Blue => { image_edit::sort(|(_, _, b)| upper / 100.0 >= b && b >= lower / 100.0); },
                     image_edit::SortBy::Hue => { image_edit::sort(|(r, g, b)| {
-                        let (h, _, _) = pixel_sorting::color_utils::rgb2hsl(r, g, b);
+                        let (h, _, _) = algorithms::color_utils::rgb2hsl(r, g, b);
                         upper / 100.0 > h / 360.0 && h / 360.0 > lower / 100.0
                     }) },
                     image_edit::SortBy::Saturation => { image_edit::sort(|(r, g, b)| {
-                        let (_, s, _) = pixel_sorting::color_utils::rgb2hsl(r, g, b);
+                        let (_, s, _) = algorithms::color_utils::rgb2hsl(r, g, b);
                         upper / 100.0 > s / 100.0 && s / 100.0 > lower / 100.0
                     }) },
                     image_edit::SortBy::Lightness => { image_edit::sort(|(r, g, b)| {
-                        let (_, _, l) = pixel_sorting::color_utils::rgb2hsl(r, g, b);
+                        let (_, _, l) = algorithms::color_utils::rgb2hsl(r, g, b);
                         upper / 100.0 > l / 100.0 && l / 100.0 > lower / 100.0
                     }) }
                     _ => {}

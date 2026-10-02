@@ -2,6 +2,7 @@ use std::{path::PathBuf, sync::{LazyLock, Mutex}};
 
 use gtk4::glib;
 use image::{DynamicImage, GenericImageView};
+use rips_algorithms as algorithms;
 
 static WORKING_IMAGE: Mutex<LazyLock<DynamicImage>> = Mutex::new(std::sync::LazyLock::new(|| image::open("/home/sashad/Pictures/sorted_fucker.png").unwrap()));
 
@@ -86,7 +87,7 @@ where
     F: Fn((f32, f32, f32)) -> bool
 {
     let mut working = WORKING_IMAGE.lock().unwrap();
-    pixel_sorting::sort_image(working.as_mut_rgba8().unwrap(), condition);
+    algorithms::sort_image(working.as_mut_rgba8().unwrap(), condition);
 }
 
 

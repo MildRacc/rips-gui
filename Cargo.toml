@@ -1,19 +1,6 @@
-[package]
-name = "RIPS"
-description = "Rusty Image Pixel Sorter"
-version = "0.1.0"
-edition = "2024"
-
-[profile.release]
-opt-level = 3
-debug = false
-strip = "symbols"
-codegen-units = 1
-lto = true
-
-[dependencies]
-gtk4 = { version = "0.11.4", features = ["v4_6"] }
-image = "0.25.10"
-open = "5.4.4"
-pixel_sorting = { version = "0.1.0", path = "../pixel_sorting" }
-rfd = "0.17.2"
+[workspace]
+resolver = "3"
+members = [
+    "gui",
+    "rips_algorithms"
+]
