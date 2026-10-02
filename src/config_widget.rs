@@ -1,13 +1,12 @@
-use gtk4::{self as gtk, ConstraintTarget, glib::{Object, property::PropertyGet, subclass::types::ObjectSubclassIsExt}, prelude::WidgetExt};
+use gtk4::{self as gtk, glib::{Object, subclass::types::ObjectSubclassIsExt}};
 use gtk::glib;
 
 use crate::image_edit::SortingConfig;
 
 mod imp
 {
-    use gtk4::AccessibleProperty::Sort;
 use gtk4::prelude::{BoxExt, ButtonExt, OrientableExt, WidgetExt};
-use gtk4::{self as gtk, Align, Label};
+use gtk4::{self as gtk, Align};
     use gtk::glib;
     use gtk::subclass::prelude::*;
     use crate::image_edit::{SortBy, SortingConfig};
@@ -16,6 +15,8 @@ use gtk4::{self as gtk, Align, Label};
     #[derive(Default)]
     pub struct ConfigWidget 
     {
+        expander: gtk::Expander,
+        expanding_container: gtk::Box,
         head_container: gtk::Box,
         close: gtk::Button,
         dropdown: gtk::DropDown,
@@ -70,7 +71,15 @@ use gtk4::{self as gtk, Align, Label};
             obj.set_halign(Align::Baseline);
             obj.set_vexpand(false);
             obj.set_hexpand(true);
+            
+            self.expander.set_label(Some("  Red [ 0 - 100 ]"));
+            self.expander.set_vexpand(true);
+            self.expander.set_hexpand(true);
+            self.expander.set_expanded(true);
 
+            self.expanding_container.set_orientation(gtk::Orientation::Vertical);
+            self.expanding_container.set_hexpand(true);
+            self.expanding_container.set_vexpand(true);
 
             self.head_container.set_valign(Align::Center);
             self.head_container.set_halign(Align::Baseline);
@@ -94,6 +103,23 @@ use gtk4::{self as gtk, Align, Label};
             self.dropdown.set_hexpand(true);
             self.dropdown.set_vexpand(true);
             self.dropdown.set_tooltip_text(Some("Sort By..."));
+
+            self.dropdown.connect_selected_notify(glib::clone!(
+                #[weak(rename_to=expander)] self.expander,
+                #[weak(rename_to=min)] self.min,
+                #[weak(rename_to=max)] self.max,
+                move |dropdown| 
+            {
+                
+                let dropdown_text = index_to_text(dropdown.selected())
+                    + " [ "
+                    + &min.value().to_string()
+                    + " - "
+                    + &max.value().to_string()
+                    + " ]";
+
+                expander.set_label(Some(&dropdown_text));
+            }));
 
             self.max_container.set_valign(Align::Center);
             self.max_container.set_halign(Align::Baseline);
@@ -123,7 +149,24 @@ use gtk4::{self as gtk, Align, Label};
             self.max.set_valign(Align::Center);
             self.max.set_hexpand(true);
             self.max.set_vexpand(true);
-            
+
+            self.max.connect_value_changed(glib::clone!( 
+                #[weak(rename_to=expander)] self.expander,
+                #[weak(rename_to=min)] self.min,
+                #[weak(rename_to=drop)] self.dropdown,
+                move |max|
+            {
+                let dropdown_text = index_to_text(drop.selected())
+                    + " [ "
+                    + &min.value().to_string()
+                    + " - "
+                    + &max.value().to_string()
+                    + " ]";
+
+                expander.set_label(Some(&dropdown_text));
+            }));
+
+
             self.min.set_range(0.0, 100.0);
             self.min.set_value(0.0);
             self.min.set_increments(1.0, 1.0);
@@ -132,6 +175,23 @@ use gtk4::{self as gtk, Align, Label};
             self.min.set_valign(Align::Center);
             self.min.set_hexpand(true);
             self.min.set_vexpand(true);
+
+            self.min.connect_value_changed(glib::clone!( 
+                #[weak(rename_to=expander)] self.expander,
+                #[weak(rename_to=max)] self.max,
+                #[weak(rename_to=drop)] self.dropdown,
+                move |min|
+            {
+                let dropdown_text = index_to_text(drop.selected())
+                    + " [ "
+                    + &min.value().to_string()
+                    + " - "
+                    + &max.value().to_string()
+                    + " ]";
+
+                expander.set_label(Some(&dropdown_text));
+            }));
+
 
             self.head_container.append(&self.close);
             self.head_container.append(&self.dropdown);
@@ -142,16 +202,37 @@ use gtk4::{self as gtk, Align, Label};
             self.min_container.append(&self.min_label);
             self.min_container.append(&self.min);
 
+            self.expander.set_child(Some(&self.expanding_container));
+            
+            self.expanding_container.append(&self.head_container);
+            self.expanding_container.append(&self.max_container);
+            self.expanding_container.append(&self.min_container);
 
-            obj.append(&self.head_container);
-            obj.append(&self.max_container);
-            obj.append(&self.min_container);
+            obj.append(&self.expander);
             
         }
     }
     impl WidgetImpl for ConfigWidget {}
     impl BoxImpl for ConfigWidget {}
 
+
+    fn index_to_text(i: u32) -> String
+    {
+        "  ".to_string() + match i 
+        {
+            0 => "Red",
+            1 => "Green",
+            2 => "Blue",
+            3 => "Hue",
+            4 => "Chroma",
+            5 => "Saturation",
+            6 => "Lightness",
+            7 => "Luminance",
+            8 => "Value",
+            9 => "Alpha",
+            _ => "Unknown Selection"
+        }
+    }
 
 
 }

@@ -1,9 +1,9 @@
-use std::sync::{LazyLock, Mutex};
+use std::{path::PathBuf, sync::{LazyLock, Mutex}};
 
 use gtk4::glib;
-use image::{DynamicImage, GenericImageView, Pixel};
+use image::{DynamicImage, GenericImageView};
 
-static WORKING_IMAGE: Mutex<LazyLock<DynamicImage>> = Mutex::new(std::sync::LazyLock::new(|| image::open("/home/sashad/Pictures/art/StoryTellingCollage.png").unwrap()));
+static WORKING_IMAGE: Mutex<LazyLock<DynamicImage>> = Mutex::new(std::sync::LazyLock::new(|| image::open("/home/sashad/Pictures/sorted_fucker.png").unwrap()));
 
 
 #[derive(Clone, Copy, Debug)]
@@ -31,6 +31,56 @@ pub enum SortBy
 }
 
 
+
+pub fn change_working_image(path: PathBuf) -> Result<(), String>
+{
+    let new_image = match image::open(&path) 
+    {
+        Ok(img) => img,
+        Err(_) => 
+        {
+            println!("Failed to open image at path: {:?}", path.to_str());
+            return Err(String::from(""));
+        }
+    };
+
+    if let Ok(mut working) = WORKING_IMAGE.lock()
+    {
+        **working = new_image;
+        drop(working);
+    }
+    else 
+    {
+        return Err(String::from("Working image mutex guard locked"));    
+    }
+
+    Ok(())
+}
+
+
+pub fn export(path: PathBuf) -> Result<(), String>
+{
+
+    if let Ok(working) = WORKING_IMAGE.lock()
+    {
+        let cloned = working.clone();
+        println!("Cloned working image"); 
+        drop(working);
+
+        if cloned.save(path).is_err()
+        {
+            return Err(String::from("Failed to save image to specified path"));
+        }
+    }
+    else 
+    {
+        return Err(String::from("Working Image mutex guard locked"));
+    }
+
+    Ok(())
+}
+
+
 pub fn sort<F>(condition: F) 
 where 
     F: Fn((f32, f32, f32)) -> bool
@@ -40,36 +90,10 @@ where
 }
 
 
-pub fn check_pixel(pixel: <DynamicImage as GenericImageView>::Pixel, conf: &SortingConfig) -> bool
-{
-
-    let sortby = conf.sort_selection;
-    let min = conf.lower;
-    let max = conf.upper;
-
-    match sortby
-    {
-        SortBy::Red | SortBy::Green | SortBy::Blue => {
-        },
-        SortBy::Hue | SortBy::Saturation | SortBy::Lightness => {
-        },
-        SortBy::Value => {
-        },
-        SortBy::Chroma => {
-        },
-        SortBy::Luminance => {
-        },
-        SortBy::Alpha => {
-        }
-        _ => {}
-    }
-    
-    true
-}
 
 pub fn picture_from_working_image() -> gtk4::Picture
 {
-    let working = unsafe { WORKING_IMAGE.lock().unwrap() };
+    let working = WORKING_IMAGE.lock().unwrap();
 
     let img = working.clone().to_rgba8();
     let (width, height) = working.dimensions();
@@ -81,9 +105,11 @@ pub fn picture_from_working_image() -> gtk4::Picture
     gtk4::Picture::for_paintable(&tex)
 }
 
-pub fn pixbuf_from_working_image() -> gtk4::gdk_pixbuf::Pixbuf
+
+
+pub fn _pixbuf_from_working_image() -> gtk4::gdk_pixbuf::Pixbuf
 {
-    let working = unsafe { WORKING_IMAGE.lock().unwrap() };
+    let working = WORKING_IMAGE.lock().unwrap();
 
     let raw_bytes = &working.clone().into_bytes();
     let image_bytes = gtk4::glib::Bytes::from(raw_bytes);
@@ -92,6 +118,7 @@ pub fn pixbuf_from_working_image() -> gtk4::gdk_pixbuf::Pixbuf
 
     gtk4::gdk_pixbuf::Pixbuf::from_bytes(&image_bytes, gtk4::gdk_pixbuf::Colorspace::Rgb, true, 8, width as i32, height as i32, (width * 4) as i32)
 }
+
 
 
 pub fn texture_from_working_image() -> gtk4::gdk::MemoryTexture

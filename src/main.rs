@@ -1,12 +1,9 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, process::exit, rc::Rc};
 
-use gtk4::{self as gtk, Application, ApplicationWindow, Button, CssProvider, Label, Orientation, Picture, Window, builders::WindowBuilder, gdk::Display, gio::prelude::{ApplicationExt, ApplicationExtManual}, glib::{self, object::ObjectExt}, prelude::{BoxExt, ButtonExt, GtkWindowExt, WidgetExt}};
-use image::{self, GenericImage, GenericImageView, Pixel, Rgb, Rgba};
+use gtk4::{self as gtk, Application, ApplicationWindow, Button, CssProvider, Label, Orientation, Picture, gdk::Display, gio::prelude::{ActionMapExtManual, ApplicationExt, ApplicationExtManual}, glib::{self}, prelude::{BoxExt, ButtonExt, GtkWindowExt, WidgetExt}};
 
-mod color_utils;
 mod config_widget;
 mod image_edit;
-use color_utils::rgb2hsl;
 
 use crate::{config_widget::ConfigWidget, image_edit::{SortingConfig, picture_from_working_image}};
 
@@ -24,7 +21,7 @@ impl App
 {
     pub fn new() -> Self
     {
-        gtk::init();
+        if gtk::init().is_err() { exit(1) }
 
         let configurators: Rc<RefCell<Vec<ConfigWidget>>> = Rc::new(RefCell::new(Vec::new()));
 
@@ -61,8 +58,33 @@ impl App
 
     fn build_primary_view(&mut self) -> gtk::Box
     {
-        let main_box = gtk::Box::builder().build();
-        
+        let main_box = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+
+
+
+        let menu_bar = gtk::Box::builder()
+            .name("menu-bar")
+            .orientation(gtk::Orientation::Horizontal)
+            .halign(gtk::Align::Baseline)
+            .valign(gtk::Align::Center)
+            .hexpand(true)
+            .vexpand(true)
+            .build();
+
+        let popover = self.build_popover_bar();
+
+        menu_bar.append(&popover);
+            
+
+        let work_area = gtk::Box::builder()
+            .orientation(gtk::Orientation::Horizontal)
+            .halign(gtk::Align::Baseline)
+            .valign(gtk::Align::Center)
+            .hexpand(true)
+            .vexpand(true)
+            .build();
 
         let conf_window = gtk::Box::builder()
             .name("config")
@@ -99,6 +121,7 @@ impl App
             .build();
 
         let sort_btn = Button::builder()
+            .name("sort-button")
             .halign(gtk::Align::Center)
             .valign(gtk::Align::Center)
             .label("Sort")
@@ -106,8 +129,11 @@ impl App
 
 
         let image_view = picture_from_working_image();
+        image_view.set_widget_name("working-image");
         image_view.set_halign(gtk::Align::Center);
         image_view.set_valign(gtk::Align::Center);
+        image_view.set_hexpand(true);
+        image_view.set_vexpand(true);
         
 
         self.view = image_view.clone();
@@ -137,22 +163,30 @@ impl App
 
                 match conf.sort_selection
                 {
-                    image_edit::SortBy::Red => { image_edit::sort(|(r, _, _)| upper / 100.0 > r && r > lower / 100.0); },
-                    image_edit::SortBy::Green => { image_edit::sort(|(_, g, _)| upper / 100.0 > g && g > lower / 100.0); },
-                    image_edit::SortBy::Blue => { image_edit::sort(|(_, _, b)| upper / 100.0 > b && b > lower / 100.0); },
+                    image_edit::SortBy::Red => { image_edit::sort(|(r, _, _)| upper / 100.0 >= r && r >= lower / 100.0); },
+                    image_edit::SortBy::Green => { image_edit::sort(|(_, g, _)| upper / 100.0 >= g && g >= lower / 100.0); },
+                    image_edit::SortBy::Blue => { image_edit::sort(|(_, _, b)| upper / 100.0 >= b && b >= lower / 100.0); },
                     image_edit::SortBy::Hue => { image_edit::sort(|(r, g, b)| {
                         let (h, _, _) = pixel_sorting::color_utils::rgb2hsl(r, g, b);
                         upper / 100.0 > h / 360.0 && h / 360.0 > lower / 100.0
+                    }) },
+                    image_edit::SortBy::Saturation => { image_edit::sort(|(r, g, b)| {
+                        let (_, s, _) = pixel_sorting::color_utils::rgb2hsl(r, g, b);
+                        upper / 100.0 > s / 100.0 && s / 100.0 > lower / 100.0
+                    }) },
+                    image_edit::SortBy::Lightness => { image_edit::sort(|(r, g, b)| {
+                        let (_, _, l) = pixel_sorting::color_utils::rgb2hsl(r, g, b);
+                        upper / 100.0 > l / 100.0 && l / 100.0 > lower / 100.0
                     }) }
                     _ => {}
                 } 
             }
 
-            
             view.set_paintable(Some(&image_edit::texture_from_working_image()));
             println!("sorted");
         }));
 
+            
 
         control_panel_area.append(&sort_btn);
 
@@ -161,9 +195,12 @@ impl App
         conf_window.append(&control_panel_area);
 
         configuration_scrolling_area.set_child(Some(&configuration_box));
-        main_box.append(&conf_window);
 
-        main_box.append(&image_view);
+        work_area.append(&conf_window);
+        work_area.append(&image_view);
+
+        main_box.append(&menu_bar);
+        main_box.append(&work_area);
 
         let add_conf_button = Button::builder()
             .name("new-conf-btn")
@@ -198,90 +235,100 @@ impl App
         main_box
     }
 
+    fn build_popover_bar(&mut self) -> gtk::PopoverMenuBar
+    {
+        
+        let file_menu = gtk::gio::Menu::new();
+        file_menu.append(Some("_Open"), Some("app.file_open"));
+        file_menu.append(Some("_Export"), Some("app.export"));
+        file_menu.append(Some("_Quit"), Some("app.quit"));
+       
+        let edit_menu = gtk::gio::Menu::new();
+        edit_menu.append(Some("_Nothing"), None);
+
+        let window_menu = gtk::gio::Menu::new();
+        window_menu.append(Some("_Help"), Some("app.help"));
+
+        let top_level_menu = gtk::gio::Menu::new();
+        top_level_menu.append_submenu(Some("_File"), &file_menu);
+        top_level_menu.append_submenu(Some("_Edit"), &edit_menu);
+        top_level_menu.append_submenu(Some("_Window"), &window_menu);
+
+        
+
+        let popover = gtk::PopoverMenuBar::builder()
+            .name("popover-menu")
+            .menu_model(&top_level_menu)
+            .halign(gtk::Align::Start)
+            .valign(gtk::Align::Start)
+            .hexpand(true)
+            .vexpand(true)
+            .build();
+    
+        
+        let file_open = gtk::gio::ActionEntry::builder("file_open")
+            .activate(|_app: &gtk::Application, _, _| 
+            {
+                println!("open");
+                let dialog = rfd::FileDialog::new()
+                    .add_filter("image", &["png", "jpg", "jpeg"])
+                    .set_title("Select an image");
+                    
+                if let Some(path) = dialog.pick_file()
+                {
+                    std::thread::spawn(move || 
+                    {
+                        let _ = image_edit::change_working_image(path);
+                        println!("Changed image");
+                    });
+                }
+
+            })
+            .build();
+
+        let export = gtk::gio::ActionEntry::builder("export")
+            .activate(|_app: &gtk::Application, _, _| 
+            {
+                println!("export");
+                let dialog = rfd::FileDialog::new()
+                    .add_filter("image", &["png", "jpg", "jpeg"])
+                    .set_title("Export location");
+
+                std::thread::spawn(move || {
+                    if let Some(path) = dialog.save_file()
+                    {
+                        let _ = image_edit::export(path);
+                    }
+                });
+
+
+            })
+            .build();
+
+        let quit = gtk::gio::ActionEntry::builder("quit")
+            .activate(|_app: &gtk::Application, _, _| exit(0))
+            .build();
+
+        
+        let help = gtk::gio::ActionEntry::builder("help")
+            .activate(|_app: &gtk::Application, _, _| { let _ = open::that("https://github.com/MildRacc/rips-gui"); })
+            .build();
+
+        self.app.add_action_entries([file_open, export, quit, help]);
+
+
+        popover
+    }
+
 }
 
 
 
 
 
-fn main() {
-    println!("Hello, world!");
-
+fn main()
+{
     let mut app = App::new();
     app.init();
     app.app.run();
-
-    return;
-
-    let img = image::open("/home/sashad/Pictures/art/StoryTellingCollage.png").unwrap();
-    println!("image imported");
-        
-    let mut image_buf = img.to_rgba8();
-    let width = image_buf.width();
-    let height = image_buf.height();
-
-    let condition = |r, g, b| {
-        
-        let (h,s,l) = rgb2hsl(r as f32, g as f32, b as f32);
-
-        return ((100.0 > h) && (h > 25.0)) || ((s > 60.0) && (l > 60.0))
-    };
-
-
-    for y in 0..height
-    {
-    
-        let mut is_grouping = false;
-        let mut group_start = 0u32;
-        let mut sort_group: Vec<Rgba<u8>> = Vec::new();
-    
-
-        for x in 0..width
-        {
-            
-            let r = image_buf.get_pixel(x, y).0[0];
-            let g = image_buf.get_pixel(x, y).0[1];
-            let b = image_buf.get_pixel(x, y).0[2];
-           
-            if condition(r, g, b) && !is_grouping
-            {
-                is_grouping = true;
-                group_start = x;
-                sort_group.clear();
-            }
-
-            if is_grouping
-            {
-                sort_group.push(*image_buf.get_pixel(x, y));
-            }
-
-            let at_row_end = x == width-1;
-            let should_flush = (!condition(r, g, b) && is_grouping) || (at_row_end && is_grouping);
-
-            if should_flush
-            {
-                is_grouping = false;
-                sort_group.sort_by(|a, b| a.0[0].cmp(&b.0[0]));
-
-                for (sorted, pixel) in sort_group.iter().enumerate()
-                {
-                    let target_x = group_start + sorted as u32;
-                    if target_x < width
-                    {
-                        image_buf.put_pixel(target_x, y, *pixel);
-                    }
-                }
-
-            }
-
-        }
-
-    }
-
-    println!("exporting");
-    image_buf.save("/home/sashad/Pictures/sorted_fucker2.png").unwrap();
 }
-
-
-
-
