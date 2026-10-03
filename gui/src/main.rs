@@ -160,33 +160,15 @@ impl App
             {
                 let upper = conf.upper;
                 let lower = conf.lower;
+                
 
-                match conf.sort_selection
-                {
-                    image_edit::SortBy::Red => { image_edit::sort(|(r, _, _)| upper / 100.0 >= r && r >= lower / 100.0); },
-                    image_edit::SortBy::Green => { image_edit::sort(|(_, g, _)| upper / 100.0 >= g && g >= lower / 100.0); },
-                    image_edit::SortBy::Blue => { image_edit::sort(|(_, _, b)| upper / 100.0 >= b && b >= lower / 100.0); },
-                    image_edit::SortBy::Hue => { image_edit::sort(|(r, g, b)| {
-                        let (h, _, _) = algorithms::color_utils::rgb2hsl(r, g, b);
-                        upper / 100.0 > h / 360.0 && h / 360.0 > lower / 100.0
-                    }) },
-                    image_edit::SortBy::Saturation => { image_edit::sort(|(r, g, b)| {
-                        let (_, s, _) = algorithms::color_utils::rgb2hsl(r, g, b);
-                        upper / 100.0 > s / 100.0 && s / 100.0 > lower / 100.0
-                    }) },
-                    image_edit::SortBy::Lightness => { image_edit::sort(|(r, g, b)| {
-                        let (_, _, l) = algorithms::color_utils::rgb2hsl(r, g, b);
-                        upper / 100.0 > l / 100.0 && l / 100.0 > lower / 100.0
-                    }) }
-                    _ => {}
-                } 
+                image_edit::sort(|v| {upper / 100.0 >= v && v >= lower}, conf.sort_selection); 
             }
 
             view.set_paintable(Some(&image_edit::texture_from_working_image()));
             println!("sorted");
         }));
 
-            
 
         control_panel_area.append(&sort_btn);
 

@@ -1495,6 +1495,7 @@ name = "rips_algorithms"
 version = "0.1.0"
 dependencies = [
  "image",
+ "rayon",
 ]
 
 [[package]]

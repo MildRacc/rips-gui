@@ -3,6 +3,7 @@ use std::{path::PathBuf, sync::{LazyLock, Mutex}};
 use gtk4::glib;
 use image::{DynamicImage, GenericImageView};
 use rips_algorithms as algorithms;
+use algorithms::color_utils::SortBy;
 
 static WORKING_IMAGE: Mutex<LazyLock<DynamicImage>> = Mutex::new(std::sync::LazyLock::new(|| image::open("/home/sashad/Pictures/sorted_fucker.png").unwrap()));
 
@@ -14,23 +15,6 @@ pub struct SortingConfig
     pub upper: f32,
     pub lower: f32
 }
-
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SortBy
-{
-    Red,
-    Green,
-    Blue,
-    Hue,
-    Chroma,
-    Saturation,
-    Lightness,
-    Luminance,
-    Value,
-    Alpha
-}
-
 
 
 pub fn change_working_image(path: PathBuf) -> Result<(), String>
@@ -82,12 +66,12 @@ pub fn export(path: PathBuf) -> Result<(), String>
 }
 
 
-pub fn sort<F>(condition: F) 
+pub fn sort<F>(condition: F, sort_by: SortBy) 
 where 
-    F: Fn((f32, f32, f32)) -> bool
+    F: Fn(f32) -> bool + std::marker::Send + std::marker::Sync
 {
     let mut working = WORKING_IMAGE.lock().unwrap();
-    algorithms::sort_image(working.as_mut_rgba8().unwrap(), condition);
+    algorithms::sort_image(&mut working, sort_by, condition);
 }
 
 

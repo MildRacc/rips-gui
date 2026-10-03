@@ -7,9 +7,10 @@ mod imp
 {
 use gtk4::prelude::{BoxExt, ButtonExt, OrientableExt, WidgetExt};
 use gtk4::{self as gtk, Align};
-    use gtk::glib;
-    use gtk::subclass::prelude::*;
-    use crate::image_edit::{SortBy, SortingConfig};
+use gtk::glib;
+use gtk::subclass::prelude::*;
+use rips_algorithms::color_utils::SortBy;
+use crate::image_edit::{SortingConfig};
 
 
     #[derive(Default)]
