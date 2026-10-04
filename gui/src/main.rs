@@ -1,3 +1,4 @@
+#![feature(portable_simd)]
 use std::{cell::RefCell, process::exit, rc::Rc};
 
 use gtk4::{self as gtk, Application, ApplicationWindow, Button, CssProvider, Label, Orientation, Picture, gdk::Display, gio::prelude::{ActionMapExtManual, ApplicationExt, ApplicationExtManual}, glib::{self}, prelude::{BoxExt, ButtonExt, GtkWindowExt, WidgetExt}};
@@ -162,7 +163,7 @@ impl App
                 let lower = conf.lower;
                 
 
-                image_edit::sort(|v| {upper / 100.0 >= v && v >= lower}, conf.sort_selection); 
+                image_edit::sort(|v| {upper / 100.0 >= v && v >= lower / 100.0}, conf.sort_selection); 
             }
 
             view.set_paintable(Some(&image_edit::texture_from_working_image()));
