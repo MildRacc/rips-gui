@@ -1,13 +1,12 @@
 #![feature(portable_simd)]
 use std::{cell::RefCell, process::exit, rc::Rc};
 
-use gtk4::{self as gtk, Application, ApplicationWindow, Button, CssProvider, Label, Orientation, Picture, gdk::Display, gio::prelude::{ActionMapExtManual, ApplicationExt, ApplicationExtManual}, glib::{self}, prelude::{BoxExt, ButtonExt, GtkWindowExt, WidgetExt}};
+use gtk4::{self as gtk, Application, ApplicationWindow, Button, CssProvider, Label, Orientation, Picture, gdk::Display, gio::{Cancellable, prelude::{ActionMapExtManual, ApplicationExt, ApplicationExtManual, FileExt}}, glib::{self, HasParamSpec, object::{IsA, ObjectExt}}, prelude::{BoxExt, ButtonExt, GtkWindowExt, WidgetExt}};
 
 mod config_widget;
 mod image_edit;
 
 use crate::{config_widget::ConfigWidget, image_edit::{SortingConfig, picture_from_working_image}};
-use rips_algorithms as algorithms;
 
 struct App
 {
@@ -62,6 +61,17 @@ impl App
         let main_box = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .build();
+
+
+        let image_view = picture_from_working_image();
+        image_view.set_widget_name("working-image");
+        image_view.set_halign(gtk::Align::Center);
+        image_view.set_valign(gtk::Align::Center);
+        image_view.set_hexpand(true);
+        image_view.set_vexpand(true);
+        
+
+        self.view = image_view.clone();
 
 
 
@@ -129,15 +139,6 @@ impl App
             .build();
 
 
-        let image_view = picture_from_working_image();
-        image_view.set_widget_name("working-image");
-        image_view.set_halign(gtk::Align::Center);
-        image_view.set_valign(gtk::Align::Center);
-        image_view.set_hexpand(true);
-        image_view.set_vexpand(true);
-        
-
-        self.view = image_view.clone();
        
         sort_btn.connect_clicked(glib::clone!(
         #[strong(rename_to=configurators)] self.configurators,
@@ -218,6 +219,8 @@ impl App
         main_box
     }
 
+
+
     fn build_popover_bar(&mut self) -> gtk::PopoverMenuBar
     {
         
@@ -247,43 +250,74 @@ impl App
             .hexpand(true)
             .vexpand(true)
             .build();
-    
-        
+         
         let file_open = gtk::gio::ActionEntry::builder("file_open")
-            .activate(|_app: &gtk::Application, _, _| 
+            .activate(glib::clone!( #[weak(rename_to=view)] self.view, move |_app: &gtk::Application, _, _| 
             {
                 println!("open");
-                let dialog = rfd::FileDialog::new()
-                    .add_filter("image", &["png", "jpg", "jpeg"])
-                    .set_title("Select an image");
-                    
-                if let Some(path) = dialog.pick_file()
-                {
-                    std::thread::spawn(move || 
-                    {
-                        let _ = image_edit::change_working_image(path);
-                        println!("Changed image");
-                    });
-                }
+                
+                
+                let dialog = gtk::FileDialog::builder()
+                    .title("Choose image")
+                    .filters(&gtk::StringList::new(&[".png", ".jpg", ".jpeg"]))
+                    .build();
 
-            })
+                let dialog_window = gtk::Window::builder()
+                    .build();
+                let cancel = Cancellable::new();
+                
+                dialog.open(Some(&dialog_window), Some(&cancel), glib::clone!( #[weak] view, move |r| 
+                    {
+                        if let Ok(file) = r 
+                        {
+                            if let Some(path) = file.path()
+                            {
+                                if image_edit::change_working_image(path).is_ok()
+                                {
+                                    view.set_paintable(Some(&image_edit::texture_from_working_image()));
+                                }
+                            }
+                        }
+                    }));
+
+                // {
+                //     if image_edit::change_working_image(path).is_ok()
+                //     {
+                //         view.unwrap().set_paintable(Some(&image_edit::texture_from_working_image()));
+                //     }
+                //
+                //
+                //     println!("Changed image");
+                // }
+                //
+            }))
             .build();
+
 
         let export = gtk::gio::ActionEntry::builder("export")
             .activate(|_app: &gtk::Application, _, _| 
             {
                 println!("export");
-                let dialog = rfd::FileDialog::new()
-                    .add_filter("image", &["png", "jpg", "jpeg"])
-                    .set_title("Export location");
 
-                std::thread::spawn(move || {
-                    if let Some(path) = dialog.save_file()
+                let dialog = gtk::FileDialog::builder()
+                    .title("Choose image")
+                    .filters(&gtk::StringList::new(&[".png", ".jpg", ".jpeg"]))
+                    .build();
+
+                let dialog_window = gtk::Window::builder()
+                    .build();
+                let cancel = Cancellable::new();
+                
+                dialog.save(Some(&dialog_window), Some(&cancel), glib::clone!(move |r| 
                     {
-                        let _ = image_edit::export(path);
-                    }
-                });
-
+                        if let Ok(file) = r
+                        {
+                            if let Some(path) = file.path()
+                            {
+                                let _ = image_edit::export(path);
+                            }
+                        }
+                    }));
 
             })
             .build();

@@ -12,8 +12,7 @@ codegen-units = 1
 lto = true
 
 [dependencies]
-gtk4 = { version = "0.11.4", features = ["v4_6"] }
+gtk4 = { version = "0.11.4", features = ["v4_10"] }
 image = "0.25.10"
 open = "5.4.4"
 rips_algorithms = { version = "0.1.0", path = "../rips_algorithms" }
-rfd = "0.17.2"

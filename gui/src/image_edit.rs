@@ -32,7 +32,6 @@ pub fn change_working_image(path: PathBuf) -> Result<(), String>
     if let Ok(mut working) = WORKING_IMAGE.lock()
     {
         **working = new_image;
-        drop(working);
     }
     else 
     {

@@ -243,7 +243,7 @@ glib::wrapper!
 {
     pub struct ConfigWidget(ObjectSubclass<imp::ConfigWidget>)
         @extends gtk::Box, gtk::Widget,
-        @implements gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable, gtk::Orientable; 
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable, gtk::Orientable; 
 }
 
 impl ConfigWidget
